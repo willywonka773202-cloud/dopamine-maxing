@@ -4,13 +4,13 @@
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
   <meta name="theme-color" content="#050505" />
-  <meta name="description" content="Swipe TikTok, YouTube, and Instagram at the same time. Three feeds. One swipe. No thoughts left." />
+  <meta name="description" content="Swipe TikTok, YouTube Shorts, and Instagram at the same time." />
   <title>DOPAMINE MAXING</title>
   <link rel="manifest" href="./manifest.json" />
   <link rel="preconnect" href="https://fonts.googleapis.com" />
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
   <link href="https://fonts.googleapis.com/css2?family=Anton&family=JetBrains+Mono:wght@400;600;700&display=swap" rel="stylesheet" />
-  <link rel="stylesheet" href="./styles.css" />
+  <link rel="stylesheet" href="./styles.css?v=4" />
 </head>
 <body>
   <div class="grain" aria-hidden="true"></div>
@@ -19,15 +19,15 @@
   <section id="splash" class="splash">
     <p class="kicker">WARNING // OVERSTIMULATION PROTOCOL</p>
     <h1 class="wordmark">DOPAMINE<br />MAXING</h1>
-    <p class="tag">tiktok + youtube + instagram<br />every swipe hits all three</p>
+    <p class="tag">tiktok + youtube shorts + instagram<br />three vertical feeds side by side</p>
     <button id="enter" type="button">TAP TO OVERSTIMULATE</button>
-    <p class="fine">public embeds. not your for-you page. that would be illegal and also worse.</p>
+    <p class="fine">public embeds. not your for-you page.</p>
   </section>
 
   <header class="hud" hidden>
     <div class="brand">
       <span class="pulse"></span>
-      <strong>DOPAMINE MAXING</strong>
+      <strong>DOPAMINE</strong>
     </div>
     <div class="stats">
       <span>HIT <b id="hit-num">01</b></span>
@@ -49,13 +49,12 @@
         <h2>INJECT URLS</h2>
         <button type="button" id="close-drawer">CLOSE</button>
       </div>
-      <p>Paste a TikTok, YouTube Short, or Instagram Reel link. It gets slotted into the next hit.</p>
+      <p>Paste a TikTok, YouTube Short, or Instagram Reel link.</p>
       <form id="add-form">
-        <input id="url-input" type="url" placeholder="https://www.tiktok.com/@.../video/..." required />
+        <input id="url-input" type="url" placeholder="https://www.youtube.com/shorts/..." required />
         <button type="submit">MAX IT</button>
       </form>
       <p id="add-status" class="status"></p>
-      <p class="hint">tip: drop one of each and swipe. custom clips live in this browser only.</p>
     </div>
   </aside>
 
@@ -65,15 +64,13 @@
         <h2>WHAT IS THIS</h2>
         <button type="button" id="close-about">CLOSE</button>
       </div>
-      <p>A triple feed. Each swipe loads one TikTok, one YouTube Short, and one Instagram Reel at the same time.</p>
-      <p>These platforms do not let random websites stream your live For You / Shorts / Reels algorithm. So this is a curated pack of public embeddable clips plus anything you paste in.</p>
-      <p>Tap a pane to focus it. Swipe, scroll, or use ↑ ↓. Space toggles mute.</p>
-      <p class="hint">built to be a bad idea on purpose.</p>
+      <p>Three vertical feeds at once. TikTok, YouTube Shorts, Instagram Reels.</p>
+      <p>Instagram often refuses to play inside other websites. If that pane looks dead, tap OPEN.</p>
+      <p>Swipe, scroll, or use arrows. Space mutes.</p>
     </div>
   </aside>
 
   <p id="toast" class="toast" hidden></p>
-
-  <script src="./app.js"></script>
+  <script src="./app.js?v=4"></script>
 </body>
 </html>

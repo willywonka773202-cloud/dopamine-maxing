@@ -6,28 +6,23 @@ const SEED = {
     { id: "6742501081818877190", label: "@patrox" },
     { id: "7527476667770522893", label: "@_luwes" },
     { id: "6796374554391448838", label: "@blessy2flex" },
-    { id: "6990565363377392901", label: "little coco" },
-    { id: "6718335390845095173", label: "docs classic" }
+    { id: "6990565363377392901", label: "little coco" }
   ],
   youtube: [
-    { id: "DLJRmUT9IRk", label: "viral short" },
-    { id: "vUKfHzd0fkA", label: "viral short" },
-    { id: "iThZjk94-tU", label: "viral short" },
-    { id: "EtBc4mWMmJE", label: "viral short" },
-    { id: "T6BlmRDbHm4", label: "viral short" },
-    { id: "_EYl7YgqwHY", label: "viral short" },
+    { id: "DLJRmUT9IRk", label: "short" },
+    { id: "vUKfHzd0fkA", label: "short" },
+    { id: "iThZjk94-tU", label: "short" },
+    { id: "EtBc4mWMmJE", label: "short" },
+    { id: "T6BlmRDbHm4", label: "short" },
+    { id: "_EYl7YgqwHY", label: "short" },
     { id: "vMGuObY8_sw", label: "artemis II" },
-    { id: "lsViB64M7Rk", label: "orion reentry" }
+    { id: "lsViB64M7Rk", label: "orion" }
   ],
   instagram: [
-    { id: "DW-toGVj4I4", label: "nasa", kind: "reel" },
-    { id: "DW2k9pLTeQ4", label: "nasa", kind: "reel" },
-    { id: "Dbn-XJhk0_-", label: "nasa", kind: "reel" },
-    { id: "Ck3Z0OVLtoH", label: "public reel", kind: "reel" },
-    { id: "DEhOo1JsD7e", label: "public reel", kind: "reel" },
-    { id: "DLHx_WNoXoY", label: "public reel", kind: "reel" },
-    { id: "C08-b3uM0U9", label: "public post", kind: "p" },
-    { id: "fA9uwTtkSN", label: "oembed sample", kind: "p" }
+    { id: "DW-toGVj4I4", label: "nasa" },
+    { id: "DW2k9pLTeQ4", label: "nasa" },
+    { id: "Dbn-XJhk0_-", label: "nasa" },
+    { id: "DWowsEjjQlE", label: "public reel" }
   ]
 };
 
@@ -64,7 +59,7 @@ function parseUrl(raw) {
   m = url.match(/tiktok\.com\/@[^/]+\/video\/(\d+)/) || url.match(/tiktok\.com\/player\/v1\/(\d+)/) || url.match(/tiktok\.com\/embed\/(\d+)/);
   if (m) return { platform: "tiktok", id: m[1], label: "pasted" };
   m = url.match(/instagram\.com\/(reel|p|reels)\/([A-Za-z0-9_-]+)/);
-  if (m) return { platform: "instagram", id: m[2], kind: m[1] === "p" ? "p" : "reel", label: "pasted" };
+  if (m) return { platform: "instagram", id: m[2], label: "pasted" };
   return null;
 }
 
@@ -91,45 +86,52 @@ function buildHits(doShuffle) {
 }
 
 function embedSrc(platform, item, active) {
-  if (!active) return "";
+  if (!active || !item) return "";
   if (platform === "youtube") {
-    return `https://www.youtube.com/embed/${item.id}?autoplay=1&mute=${muted ? 1 : 0}&loop=1&playlist=${item.id}&playsinline=1&rel=0&modestbranding=1&enablejsapi=1`;
+    return `https://www.youtube.com/embed/${item.id}?autoplay=1&mute=${muted ? 1 : 0}&loop=1&playlist=${item.id}&playsinline=1&rel=0&modestbranding=1&controls=0&cc_load_policy=0&iv_load_policy=3&fs=0`;
   }
   if (platform === "tiktok") {
-    return `https://www.tiktok.com/player/v1/${item.id}?autoplay=1&muted=${muted ? 1 : 0}&loop=1&progress_bar=0&description=0&music_info=0`;
+    return `https://www.tiktok.com/player/v1/${item.id}?autoplay=1&muted=${muted ? 1 : 0}&loop=1&progress_bar=0&description=0&music_info=0&controls=0`;
   }
-  const kind = item.kind === "p" ? "p" : "reel";
-  return `https://www.instagram.com/${kind}/${item.id}/embed/captioned/`;
+  return `https://www.instagram.com/reel/${item.id}/embed/`;
 }
 
 function openHref(platform, item) {
   if (platform === "youtube") return `https://www.youtube.com/shorts/${item.id}`;
-  if (platform === "tiktok") return `https://www.tiktok.com/embed/${item.id}`;
-  const kind = item.kind === "p" ? "p" : "reel";
-  return `https://www.instagram.com/${kind}/${item.id}/`;
+  if (platform === "tiktok") return `https://www.tiktok.com/player/v1/${item.id}`;
+  return `https://www.instagram.com/reel/${item.id}/`;
 }
 
 function paneHTML(platform, item, idx) {
-  const names = { tiktok: "TIKTOK", youtube: "YOUTUBE", instagram: "INSTAGRAM" };
+  const names = { tiktok: "TIKTOK", youtube: "SHORTS", instagram: "INSTAGRAM" };
   const cls = platform === "tiktok" ? "tt" : platform === "youtube" ? "yt" : "ig";
   return `
     <article class="pane ${cls}" data-platform="${platform}" data-hit="${idx}">
       <span class="badge">${names[platform]}</span>
       <button class="focus-btn" type="button" data-focus>FOCUS</button>
       <a class="open-btn" href="${openHref(platform, item)}" target="_blank" rel="noopener">OPEN</a>
-      <iframe
-        title="${names[platform]} ${item.label || item.id}"
-        allow="autoplay; clipboard-write; encrypted-media; fullscreen; picture-in-picture"
-        allowfullscreen
-        loading="lazy"
-        referrerpolicy="strict-origin-when-cross-origin"
-      ></iframe>
-      <div class="fallback" hidden>
-        <h3>${names[platform]}</h3>
-        <p>${item.label || item.id}</p>
-        <a href="${openHref(platform, item)}" target="_blank" rel="noopener">open on ${platform}</a>
+      <div class="stage">
+        <iframe
+          title="${names[platform]} ${item.label || item.id}"
+          allow="autoplay; clipboard-write; encrypted-media; fullscreen; picture-in-picture"
+          allowfullscreen
+          referrerpolicy="strict-origin-when-cross-origin"
+        ></iframe>
       </div>
     </article>`;
+}
+
+function scaleInstagram() {
+  document.querySelectorAll(".pane.ig").forEach((pane) => {
+    const iframe = pane.querySelector("iframe");
+    if (!iframe) return;
+    const w = pane.clientWidth || 1;
+    const h = pane.clientHeight || 1;
+    const sx = w / 328;
+    const sy = h / 720;
+    const s = Math.max(sx, sy);
+    iframe.style.transform = `scale(${s})`;
+  });
 }
 
 function render() {
@@ -140,6 +142,7 @@ function render() {
       ${paneHTML("instagram", hit.instagram, i)}
     </section>`).join("");
   syncIframes();
+  requestAnimationFrame(scaleInstagram);
 }
 
 function visibleIndex() {
@@ -161,6 +164,7 @@ function syncIframes() {
       if (iframe.getAttribute("src") !== next) iframe.src = next;
     });
   });
+  scaleInstagram();
 }
 
 function setMuted(next) {
@@ -195,6 +199,7 @@ function showToast(msg) {
 
 function enter() {
   splash.hidden = true;
+  splash.classList.add("gone");
   hud.hidden = false;
   feedEl.hidden = false;
   buildHits(true);
@@ -208,17 +213,19 @@ function toggleFocus(pane) {
     pane.classList.remove("focused");
     focused = null;
     pane.querySelector("[data-focus]").textContent = "FOCUS";
+    scaleInstagram();
     return;
   }
   pane.classList.add("focused");
   focused = pane;
   pane.querySelector("[data-focus]").textContent = "EXIT";
+  requestAnimationFrame(scaleInstagram);
 }
 
 function addClip(raw) {
   const parsed = parseUrl(raw);
   if (!parsed) {
-    addStatus.textContent = "could not read that url. tiktok / youtube / instagram only.";
+    addStatus.textContent = "tiktok / youtube shorts / instagram reel only";
     return false;
   }
   const list = loadCustom();
@@ -275,8 +282,12 @@ feedEl.addEventListener("click", (e) => {
   toggleFocus(btn.closest(".pane"));
 });
 
+window.addEventListener("resize", scaleInstagram);
 window.addEventListener("keydown", (e) => {
-  if (splash.hidden === false) return;
+  if (!splash.hidden) {
+    if (e.code === "Enter" || e.code === "Space") { e.preventDefault(); enter(); }
+    return;
+  }
   if (e.code === "Space") { e.preventDefault(); setMuted(!muted); }
   if (e.key === "ArrowDown" || e.key === "j") feedEl.scrollBy({ top: feedEl.clientHeight, behavior: "smooth" });
   if (e.key === "ArrowUp" || e.key === "k") feedEl.scrollBy({ top: -feedEl.clientHeight, behavior: "smooth" });
