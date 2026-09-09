@@ -4,12 +4,11 @@
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
   <meta name="theme-color" content="#050505" />
-  <meta name="description" content="Swipe TikTok, YouTube Shorts, and Instagram at the same time." />
   <title>DOPAMINE MAXING</title>
   <link rel="preconnect" href="https://fonts.googleapis.com" />
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
   <link href="https://fonts.googleapis.com/css2?family=Anton&family=JetBrains+Mono:wght@400;600;700&display=swap" rel="stylesheet" />
-  <link rel="stylesheet" href="./styles.css?v=5" />
+  <link rel="stylesheet" href="./styles.css?v=6" />
 </head>
 <body>
   <div class="grain" aria-hidden="true"></div>
@@ -18,23 +17,22 @@
   <section id="splash" class="splash">
     <p class="kicker">WARNING // OVERSTIMULATION PROTOCOL</p>
     <h1 class="wordmark">DOPAMINE<br />MAXING</h1>
-    <p class="tag">tiktok + youtube shorts + instagram<br />pick how many feeds fill the screen</p>
+    <p class="tag">tiktok, youtube shorts, instagram<br />swipe stays in the app</p>
     <button id="enter" type="button">TAP TO OVERSTIMULATE</button>
   </section>
 
   <header class="hud" hidden>
-    <div class="brand"><span class="pulse"></span><strong>DOPAMINE</strong></div>
+    <div class="brand"><span class="pulse"></span></div>
     <div class="stats">HIT <b id="hit-num">01</b></div>
     <div class="cols" id="col-picker" role="group" aria-label="How many feeds">
       <button type="button" data-cols="1">1</button>
       <button type="button" data-cols="2">2</button>
-      <button type="button" data-cols="3" class="on">3</button>
+      <button type="button" data-cols="3">3</button>
     </div>
     <div class="actions">
       <button type="button" id="mute-btn" class="on">MUTE</button>
       <button type="button" id="shuffle-btn">SHUFF</button>
       <button type="button" id="add-btn">ADD</button>
-      <button type="button" id="info-btn">?</button>
     </div>
   </header>
 
@@ -46,7 +44,6 @@
         <h2>INJECT URLS</h2>
         <button type="button" id="close-drawer">CLOSE</button>
       </div>
-      <p>Paste a TikTok, YouTube Short, or Instagram Reel link.</p>
       <form id="add-form">
         <input id="url-input" type="url" placeholder="https://www.youtube.com/shorts/..." required />
         <button type="submit">MAX IT</button>
@@ -55,18 +52,7 @@
     </div>
   </aside>
 
-  <aside id="about" class="drawer" hidden>
-    <div class="drawer-card">
-      <div class="drawer-head">
-        <h2>WHAT IS THIS</h2>
-        <button type="button" id="close-about">CLOSE</button>
-      </div>
-      <p>Use 1 / 2 / 3 to choose how many feeds fit the screen.</p>
-      <p>Tapping a video no longer kicks you out to YouTube. OPEN is the only way out.</p>
-    </div>
-  </aside>
-
   <p id="toast" class="toast" hidden></p>
-  <script src="./app.js?v=5"></script>
+  <script src="./app.js?v=6"></script>
 </body>
 </html>

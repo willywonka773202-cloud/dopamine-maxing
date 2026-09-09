@@ -33,21 +33,24 @@ const hud = document.querySelector(".hud");
 const hitNum = document.getElementById("hit-num");
 const muteBtn = document.getElementById("mute-btn");
 const drawer = document.getElementById("drawer");
-const about = document.getElementById("about");
 const toast = document.getElementById("toast");
 const addStatus = document.getElementById("add-status");
 
 const customKey = "dm-custom-v1";
 const colsKey = "dm-cols-v1";
 let muted = true;
-let focused = null;
 let hits = [];
 let lastHit = 0;
-let cols = clampCols(localStorage.getItem(colsKey) || 3);
+let cols = initialCols();
 
 function clampCols(n) {
   n = Number(n);
-  return n === 1 || n === 2 || n === 3 ? n : 3;
+  return n === 1 || n === 2 || n === 3 ? n : 1;
+}
+function initialCols() {
+  const saved = localStorage.getItem(colsKey);
+  if (saved) return clampCols(saved);
+  return window.innerWidth < 800 ? 1 : 3;
 }
 
 function loadCustom() {
@@ -78,16 +81,31 @@ function shuffle(arr) {
   return a;
 }
 
-function buildHits(doShuffle) {
+function pools(doShuffle) {
   const custom = loadCustom();
-  const tt = (doShuffle ? shuffle(SEED.tiktok) : SEED.tiktok.slice()).concat(custom.filter(x => x.platform === "tiktok"));
-  const yt = (doShuffle ? shuffle(SEED.youtube) : SEED.youtube.slice()).concat(custom.filter(x => x.platform === "youtube"));
-  const ig = (doShuffle ? shuffle(SEED.instagram) : SEED.instagram.slice()).concat(custom.filter(x => x.platform === "instagram"));
-  const n = Math.max(tt.length, yt.length, ig.length, 6);
+  return {
+    tiktok: (doShuffle ? shuffle(SEED.tiktok) : SEED.tiktok.slice()).concat(custom.filter(x => x.platform === "tiktok")),
+    youtube: (doShuffle ? shuffle(SEED.youtube) : SEED.youtube.slice()).concat(custom.filter(x => x.platform === "youtube")),
+    instagram: (doShuffle ? shuffle(SEED.instagram) : SEED.instagram.slice()).concat(custom.filter(x => x.platform === "instagram"))
+  };
+}
+
+function buildHits(doShuffle) {
+  const p = pools(doShuffle);
+  const n = Math.max(p.tiktok.length, p.youtube.length, p.instagram.length, 8);
+  if (cols === 1) {
+    hits = [];
+    for (let i = 0; i < n; i++) {
+      hits.push({ platform: "tiktok", item: p.tiktok[i % p.tiktok.length] });
+      hits.push({ platform: "youtube", item: p.youtube[i % p.youtube.length] });
+      hits.push({ platform: "instagram", item: p.instagram[i % p.instagram.length] });
+    }
+    return;
+  }
   hits = Array.from({ length: n }, (_, i) => ({
-    tiktok: tt[i % tt.length],
-    youtube: yt[i % yt.length],
-    instagram: ig[i % ig.length]
+    tiktok: p.tiktok[i % p.tiktok.length],
+    youtube: p.youtube[i % p.youtube.length],
+    instagram: p.instagram[i % p.instagram.length]
   }));
 }
 
@@ -108,18 +126,18 @@ function openHref(platform, item) {
   return `https://www.instagram.com/reel/${item.id}/`;
 }
 
-function paneHTML(platform, item, idx) {
+function paneHTML(platform, item) {
   const names = { tiktok: "TIKTOK", youtube: "SHORTS", instagram: "INSTAGRAM" };
   const cls = platform === "tiktok" ? "tt" : platform === "youtube" ? "yt" : "ig";
   return `
-    <article class="pane ${cls}" data-platform="${platform}" data-hit="${idx}">
+    <article class="pane ${cls}" data-platform="${platform}" data-id="${item.id}">
       <span class="badge">${names[platform]}</span>
-      <button class="focus-btn" type="button" data-focus>FOCUS</button>
-      <a class="open-btn" href="${openHref(platform, item)}" target="_blank" rel="noopener">OPEN</a>
+      <button class="open-btn" type="button" data-open="${openHref(platform, item)}">OPEN</button>
       <div class="stage">
         <iframe
-          title="${names[platform]} ${item.label || item.id}"
-          allow="autoplay; encrypted-media; fullscreen; picture-in-picture"
+          title="${names[platform]}"
+          sandbox="allow-scripts allow-same-origin allow-presentation"
+          allow="autoplay; encrypted-media; picture-in-picture"
           referrerpolicy="strict-origin-when-cross-origin"
         ></iframe>
       </div>
@@ -127,45 +145,38 @@ function paneHTML(platform, item, idx) {
     </article>`;
 }
 
-function applyCols() {
+function applyColsUi() {
   document.documentElement.style.setProperty("--cols", String(cols));
   document.querySelectorAll("#col-picker button").forEach((btn) => {
     btn.classList.toggle("on", Number(btn.dataset.cols) === cols);
   });
-  document.querySelectorAll(".hit").forEach((section) => {
-    ORDER.forEach((platform, i) => {
-      const pane = section.querySelector(`[data-platform="${platform}"]`);
-      if (pane) pane.classList.toggle("off", i >= cols);
-    });
-  });
-  scaleInstagram();
 }
 
 function setCols(next) {
-  cols = clampCols(next);
+  const n = clampCols(next);
+  if (n === cols) return;
+  cols = n;
   localStorage.setItem(colsKey, String(cols));
-  applyCols();
-  showToast(cols === 1 ? "1 FEED" : `${cols} FEEDS`);
-}
-
-function scaleInstagram() {
-  document.querySelectorAll(".pane.ig:not(.off)").forEach((pane) => {
-    const iframe = pane.querySelector("iframe");
-    if (!iframe) return;
-    const w = pane.clientWidth || 1;
-    const h = pane.clientHeight || 1;
-    iframe.style.transform = `scale(${Math.max(w / 328, h / 720)})`;
-  });
+  applyColsUi();
+  buildHits(false);
+  render();
+  feedEl.scrollTo({ top: 0 });
+  showToast(cols === 1 ? "FULL SCREEN · SWIPE ALL 3" : `${cols} SIDE BY SIDE`);
 }
 
 function render() {
-  feedEl.innerHTML = hits.map((hit, i) => `
-    <section class="hit" data-index="${i}">
-      ${paneHTML("tiktok", hit.tiktok, i)}
-      ${paneHTML("youtube", hit.youtube, i)}
-      ${paneHTML("instagram", hit.instagram, i)}
-    </section>`).join("");
-  applyCols();
+  applyColsUi();
+  if (cols === 1) {
+    feedEl.innerHTML = hits.map((slide) => `
+      <section class="hit">${paneHTML(slide.platform, slide.item)}</section>`).join("");
+  } else {
+    feedEl.innerHTML = hits.map((hit) => `
+      <section class="hit">
+        ${paneHTML("tiktok", hit.tiktok)}
+        ${paneHTML("youtube", hit.youtube)}
+        ${cols === 3 ? paneHTML("instagram", hit.instagram) : ""}
+      </section>`).join("");
+  }
   syncIframes();
 }
 
@@ -178,35 +189,25 @@ function syncIframes() {
   const current = visibleIndex();
   lastHit = current;
   hitNum.textContent = String(current + 1).padStart(2, "0");
-  document.querySelectorAll(".hit").forEach((section, i) => {
+  const sections = document.querySelectorAll(".hit");
+  sections.forEach((section, i) => {
     const active = Math.abs(i - current) <= 1;
-    const hit = hits[i];
     section.querySelectorAll(".pane").forEach((pane) => {
-      const platform = pane.dataset.platform;
       const iframe = pane.querySelector("iframe");
-      const show = active && !pane.classList.contains("off");
-      const next = embedSrc(platform, hit[platform], show);
+      const platform = pane.dataset.platform;
+      let item;
+      if (cols === 1) item = hits[i] && hits[i].item;
+      else item = hits[i] && hits[i][platform];
+      const next = embedSrc(platform, item, active);
       if (iframe.getAttribute("src") !== next) iframe.src = next;
     });
   });
-  scaleInstagram();
 }
 
 function setMuted(next) {
   muted = next;
   muteBtn.classList.toggle("on", muted);
   muteBtn.textContent = muted ? "MUTE" : "SOUND";
-  document.querySelectorAll(".pane iframe").forEach((frame) => {
-    if (!frame.src) return;
-    if (frame.src.includes("youtube.com")) {
-      frame.contentWindow?.postMessage(JSON.stringify({
-        event: "command", func: muted ? "mute" : "unMute", args: []
-      }), "*");
-    }
-    if (frame.src.includes("tiktok.com")) {
-      frame.contentWindow?.postMessage({ type: muted ? "mute" : "unMute", "x-tiktok-player": true }, "*");
-    }
-  });
   syncIframes();
 }
 
@@ -223,22 +224,7 @@ function enter() {
   feedEl.hidden = false;
   buildHits(true);
   render();
-  showToast("FEEDS ARMED");
-}
-
-function toggleFocus(pane) {
-  if (focused && focused !== pane) focused.classList.remove("focused");
-  if (focused === pane) {
-    pane.classList.remove("focused");
-    focused = null;
-    pane.querySelector("[data-focus]").textContent = "FOCUS";
-    scaleInstagram();
-    return;
-  }
-  pane.classList.add("focused");
-  focused = pane;
-  pane.querySelector("[data-focus]").textContent = "EXIT";
-  requestAnimationFrame(scaleInstagram);
+  showToast(cols === 1 ? "SWIPE · TT THEN YT THEN IG" : "FEEDS ARMED");
 }
 
 function addClip(raw) {
@@ -252,7 +238,7 @@ function addClip(raw) {
   saveCustom(list);
   buildHits(false);
   render();
-  addStatus.textContent = `injected ${parsed.platform} · ${parsed.id}`;
+  addStatus.textContent = `injected ${parsed.platform}`;
   showToast(`ADDED ${parsed.platform.toUpperCase()}`);
   return true;
 }
@@ -262,21 +248,19 @@ document.getElementById("mute-btn").addEventListener("click", () => setMuted(!mu
 document.getElementById("shuffle-btn").addEventListener("click", () => {
   buildHits(true);
   render();
-  feedEl.scrollTo({ top: 0, behavior: "smooth" });
+  feedEl.scrollTo({ top: 0 });
   showToast("RESHUFFLED");
 });
-document.getElementById("add-btn").addEventListener("click", () => { drawer.hidden = false; document.getElementById("url-input").focus(); });
+document.getElementById("add-btn").addEventListener("click", () => {
+  drawer.hidden = false;
+  document.getElementById("url-input").focus();
+});
 document.getElementById("close-drawer").addEventListener("click", () => { drawer.hidden = true; });
-document.getElementById("info-btn").addEventListener("click", () => { about.hidden = false; });
-document.getElementById("close-about").addEventListener("click", () => { about.hidden = true; });
 drawer.addEventListener("click", (e) => { if (e.target === drawer) drawer.hidden = true; });
-about.addEventListener("click", (e) => { if (e.target === about) about.hidden = true; });
-
 document.getElementById("col-picker").addEventListener("click", (e) => {
   const btn = e.target.closest("[data-cols]");
   if (btn) setCols(btn.dataset.cols);
 });
-
 document.getElementById("add-form").addEventListener("submit", (e) => {
   e.preventDefault();
   const input = document.getElementById("url-input");
@@ -284,25 +268,16 @@ document.getElementById("add-form").addEventListener("submit", (e) => {
 });
 
 feedEl.addEventListener("scroll", () => {
-  const idx = visibleIndex();
-  if (idx !== lastHit) {
-    if (focused) {
-      focused.classList.remove("focused");
-      const btn = focused.querySelector("[data-focus]");
-      if (btn) btn.textContent = "FOCUS";
-      focused = null;
-    }
-    syncIframes();
-  }
+  if (visibleIndex() !== lastHit) syncIframes();
 }, { passive: true });
 
 feedEl.addEventListener("click", (e) => {
-  const btn = e.target.closest("[data-focus]");
-  if (!btn) return;
-  toggleFocus(btn.closest(".pane"));
+  const open = e.target.closest("[data-open]");
+  if (!open) return;
+  e.preventDefault();
+  window.open(open.getAttribute("data-open"), "_blank", "noopener");
 });
 
-window.addEventListener("resize", scaleInstagram);
 window.addEventListener("keydown", (e) => {
   if (!splash.hidden) {
     if (e.code === "Enter" || e.code === "Space") { e.preventDefault(); enter(); }
@@ -312,9 +287,4 @@ window.addEventListener("keydown", (e) => {
   if (e.key === "1" || e.key === "2" || e.key === "3") setCols(e.key);
   if (e.key === "ArrowDown" || e.key === "j") feedEl.scrollBy({ top: feedEl.clientHeight, behavior: "smooth" });
   if (e.key === "ArrowUp" || e.key === "k") feedEl.scrollBy({ top: -feedEl.clientHeight, behavior: "smooth" });
-  if (e.key === "Escape") {
-    drawer.hidden = true;
-    about.hidden = true;
-    if (focused) toggleFocus(focused);
-  }
 });
