@@ -4,18 +4,21 @@
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover, maximum-scale=1" />
   <meta name="theme-color" content="#050505" />
+  <meta name="referrer" content="strict-origin-when-cross-origin" />
   <title>DOPAMINE MAXING</title>
   <link rel="preconnect" href="https://fonts.googleapis.com" />
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link rel="preconnect" href="https://i.ytimg.com" />
   <link href="https://fonts.googleapis.com/css2?family=Anton&family=JetBrains+Mono:wght@400;600;700&display=swap" rel="stylesheet" />
-  <link rel="stylesheet" href="./styles.css?v=7" />
+  <link rel="stylesheet" href="./styles.css?v=8" />
 </head>
 <body>
   <section id="splash" class="splash">
     <p class="kicker">WARNING // OVERSTIMULATION PROTOCOL</p>
     <h1 class="wordmark">DOPAMINE<br />MAXING</h1>
-    <p class="tag">tiktok + youtube shorts + instagram<br />links are blocked. swipe stays here.</p>
+    <p class="tag">youtube shorts play on tap<br />tiktok tries &middot; instagram is a card<br />swipe never leaves this page</p>
     <button id="enter" type="button">TAP TO OVERSTIMULATE</button>
+    <p class="fine">v8 &middot; no iframe while you scroll</p>
   </section>
 
   <header class="hud" hidden>
@@ -27,14 +30,16 @@
       <button type="button" data-cols="3">3</button>
     </div>
     <div class="actions">
+      <button type="button" id="auto-btn">AUTO</button>
       <button type="button" id="mute-btn" class="on">MUTE</button>
       <button type="button" id="shuffle-btn">SHUFF</button>
       <button type="button" id="add-btn">ADD</button>
     </div>
   </header>
 
-  <main id="feed" class="feed" hidden></main>
-  <div id="lock" class="lock" hidden></div>
+  <main id="feed" class="feed" hidden>
+    <div id="track" class="track"></div>
+  </main>
 
   <aside id="drawer" class="drawer" hidden>
     <div class="drawer-card">
@@ -51,6 +56,6 @@
   </aside>
 
   <p id="toast" class="toast" hidden></p>
-  <script src="./app.js?v=7"></script>
+  <script src="./app.js?v=8"></script>
 </body>
 </html>
