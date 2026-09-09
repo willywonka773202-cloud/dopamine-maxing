@@ -1,35 +1,35 @@
 const SEED = {
   tiktok: [
-    { id: "6718335390845095173", label: "@scout2015" },
-    { id: "6948210747285441798", label: "@countingprimes" },
-    { id: "7067695578729221378", label: "@burntpizza89" },
-    { id: "6742501081818877190", label: "@patrox" },
-    { id: "7527476667770522893", label: "@_luwes" },
-    { id: "6796374554391448838", label: "@blessy2flex" },
-    { id: "6990565363377392901", label: "little coco" }
+    { id: "6718335390845095173" },
+    { id: "6948210747285441798" },
+    { id: "7067695578729221378" },
+    { id: "6742501081818877190" },
+    { id: "7527476667770522893" },
+    { id: "6796374554391448838" },
+    { id: "6990565363377392901" }
   ],
   youtube: [
-    { id: "DLJRmUT9IRk", label: "short" },
-    { id: "vUKfHzd0fkA", label: "short" },
-    { id: "iThZjk94-tU", label: "short" },
-    { id: "EtBc4mWMmJE", label: "short" },
-    { id: "T6BlmRDbHm4", label: "short" },
-    { id: "_EYl7YgqwHY", label: "short" },
-    { id: "vMGuObY8_sw", label: "artemis II" },
-    { id: "lsViB64M7Rk", label: "orion" }
+    { id: "DLJRmUT9IRk" },
+    { id: "vUKfHzd0fkA" },
+    { id: "iThZjk94-tU" },
+    { id: "EtBc4mWMmJE" },
+    { id: "T6BlmRDbHm4" },
+    { id: "_EYl7YgqwHY" },
+    { id: "vMGuObY8_sw" },
+    { id: "lsViB64M7Rk" }
   ],
   instagram: [
-    { id: "DW-toGVj4I4", label: "nasa" },
-    { id: "DW2k9pLTeQ4", label: "nasa" },
-    { id: "Dbn-XJhk0_-", label: "nasa" },
-    { id: "DWowsEjjQlE", label: "public reel" }
+    { id: "DW-toGVj4I4" },
+    { id: "DW2k9pLTeQ4" },
+    { id: "Dbn-XJhk0_-" },
+    { id: "DWowsEjjQlE" }
   ]
 };
 
-const ORDER = ["tiktok", "youtube", "instagram"];
 const feedEl = document.getElementById("feed");
 const splash = document.getElementById("splash");
 const hud = document.querySelector(".hud");
+const lock = document.getElementById("lock");
 const hitNum = document.getElementById("hit-num");
 const muteBtn = document.getElementById("mute-btn");
 const drawer = document.getElementById("drawer");
@@ -37,10 +37,10 @@ const toast = document.getElementById("toast");
 const addStatus = document.getElementById("add-status");
 
 const customKey = "dm-custom-v1";
-const colsKey = "dm-cols-v1";
+const colsKey = "dm-cols-v2";
 let muted = true;
 let hits = [];
-let lastHit = 0;
+let index = 0;
 let cols = initialCols();
 
 function clampCols(n) {
@@ -52,7 +52,6 @@ function initialCols() {
   if (saved) return clampCols(saved);
   return window.innerWidth < 800 ? 1 : 3;
 }
-
 function loadCustom() {
   try { return JSON.parse(localStorage.getItem(customKey) || "[]"); }
   catch { return []; }
@@ -60,18 +59,16 @@ function loadCustom() {
 function saveCustom(list) {
   localStorage.setItem(customKey, JSON.stringify(list.slice(-40)));
 }
-
 function parseUrl(raw) {
   const url = raw.trim();
   let m = url.match(/(?:youtube\.com\/shorts\/|youtube\.com\/embed\/|youtube\.com\/watch\?v=|youtu\.be\/)([\w-]{11})/);
-  if (m) return { platform: "youtube", id: m[1], label: "pasted" };
-  m = url.match(/tiktok\.com\/@[^/]+\/video\/(\d+)/) || url.match(/tiktok\.com\/player\/v1\/(\d+)/) || url.match(/tiktok\.com\/embed\/(\d+)/);
-  if (m) return { platform: "tiktok", id: m[1], label: "pasted" };
+  if (m) return { platform: "youtube", id: m[1] };
+  m = url.match(/tiktok\.com\/@[^/]+\/video\/(\d+)/) || url.match(/tiktok\.com\/player\/v1\/(\d+)/);
+  if (m) return { platform: "tiktok", id: m[1] };
   m = url.match(/instagram\.com\/(reel|p|reels)\/([A-Za-z0-9_-]+)/);
-  if (m) return { platform: "instagram", id: m[2], label: "pasted" };
+  if (m) return { platform: "instagram", id: m[2] };
   return null;
 }
-
 function shuffle(arr) {
   const a = arr.slice();
   for (let i = a.length - 1; i > 0; i--) {
@@ -80,7 +77,6 @@ function shuffle(arr) {
   }
   return a;
 }
-
 function pools(doShuffle) {
   const custom = loadCustom();
   return {
@@ -89,7 +85,6 @@ function pools(doShuffle) {
     instagram: (doShuffle ? shuffle(SEED.instagram) : SEED.instagram.slice()).concat(custom.filter(x => x.platform === "instagram"))
   };
 }
-
 function buildHits(doShuffle) {
   const p = pools(doShuffle);
   const n = Math.max(p.tiktok.length, p.youtube.length, p.instagram.length, 8);
@@ -109,39 +104,33 @@ function buildHits(doShuffle) {
   }));
 }
 
-function embedSrc(platform, item, active) {
-  if (!active || !item) return "";
+function embedSrc(platform, item) {
+  if (!item) return "";
   if (platform === "youtube") {
-    return `https://www.youtube.com/embed/${item.id}?autoplay=1&mute=${muted ? 1 : 0}&loop=1&playlist=${item.id}&playsinline=1&rel=0&modestbranding=1&controls=0&cc_load_policy=0&iv_load_policy=3&fs=0`;
+    return `https://www.youtube-nocookie.com/embed/${item.id}?autoplay=1&mute=${muted ? 1 : 0}&loop=1&playlist=${item.id}&playsinline=1&rel=0&modestbranding=1&controls=0&fs=0&disablekb=1`;
   }
   if (platform === "tiktok") {
     return `https://www.tiktok.com/player/v1/${item.id}?autoplay=1&muted=${muted ? 1 : 0}&loop=1&progress_bar=0&description=0&music_info=0&controls=0`;
   }
-  return `https://www.instagram.com/reel/${item.id}/embed/`;
-}
-
-function openHref(platform, item) {
-  if (platform === "youtube") return `https://www.youtube.com/shorts/${item.id}`;
-  if (platform === "tiktok") return `https://www.tiktok.com/player/v1/${item.id}`;
-  return `https://www.instagram.com/reel/${item.id}/`;
+  return `https://www.instagram.com/reel/${item.id}/embed/captioned/`;
 }
 
 function paneHTML(platform, item) {
   const names = { tiktok: "TIKTOK", youtube: "SHORTS", instagram: "INSTAGRAM" };
   const cls = platform === "tiktok" ? "tt" : platform === "youtube" ? "yt" : "ig";
   return `
-    <article class="pane ${cls}" data-platform="${platform}" data-id="${item.id}">
+    <article class="pane ${cls}" data-platform="${platform}">
       <span class="badge">${names[platform]}</span>
-      <button class="open-btn" type="button" data-open="${openHref(platform, item)}">OPEN</button>
       <div class="stage">
         <iframe
           title="${names[platform]}"
-          sandbox="allow-scripts allow-same-origin allow-presentation"
-          allow="autoplay; encrypted-media; picture-in-picture"
-          referrerpolicy="strict-origin-when-cross-origin"
+          sandbox="allow-scripts allow-same-origin"
+          allow="autoplay; encrypted-media"
+          referrerpolicy="no-referrer"
+          tabindex="-1"
         ></iframe>
       </div>
-      <div class="shield" aria-hidden="true"></div>
+      <iframe class="blocker" src="about:blank" tabindex="-1" aria-hidden="true"></iframe>
     </article>`;
 }
 
@@ -157,18 +146,16 @@ function setCols(next) {
   if (n === cols) return;
   cols = n;
   localStorage.setItem(colsKey, String(cols));
-  applyColsUi();
+  index = 0;
   buildHits(false);
   render();
-  feedEl.scrollTo({ top: 0 });
-  showToast(cols === 1 ? "FULL SCREEN · SWIPE ALL 3" : `${cols} SIDE BY SIDE`);
+  showToast(cols === 1 ? "FULL SCREEN" : `${cols} SIDE BY SIDE`);
 }
 
 function render() {
   applyColsUi();
   if (cols === 1) {
-    feedEl.innerHTML = hits.map((slide) => `
-      <section class="hit">${paneHTML(slide.platform, slide.item)}</section>`).join("");
+    feedEl.innerHTML = hits.map((slide) => `<section class="hit">${paneHTML(slide.platform, slide.item)}</section>`).join("");
   } else {
     feedEl.innerHTML = hits.map((hit) => `
       <section class="hit">
@@ -177,28 +164,27 @@ function render() {
         ${cols === 3 ? paneHTML("instagram", hit.instagram) : ""}
       </section>`).join("");
   }
+  goTo(0, true);
+}
+
+function goTo(next, instant) {
+  index = Math.max(0, Math.min(hits.length - 1, next));
+  hitNum.textContent = String(index + 1).padStart(2, "0");
+  const offset = index * feedEl.clientHeight;
+  feedEl.scrollTo({ top: offset, behavior: instant ? "auto" : "smooth" });
   syncIframes();
 }
 
-function visibleIndex() {
-  const h = feedEl.clientHeight || 1;
-  return Math.max(0, Math.min(hits.length - 1, Math.round(feedEl.scrollTop / h)));
-}
-
 function syncIframes() {
-  const current = visibleIndex();
-  lastHit = current;
-  hitNum.textContent = String(current + 1).padStart(2, "0");
-  const sections = document.querySelectorAll(".hit");
-  sections.forEach((section, i) => {
-    const active = Math.abs(i - current) <= 1;
+  document.querySelectorAll(".hit").forEach((section, i) => {
+    const active = Math.abs(i - index) <= 1;
     section.querySelectorAll(".pane").forEach((pane) => {
-      const iframe = pane.querySelector("iframe");
+      const iframe = pane.querySelector(".stage iframe");
       const platform = pane.dataset.platform;
       let item;
       if (cols === 1) item = hits[i] && hits[i].item;
       else item = hits[i] && hits[i][platform];
-      const next = embedSrc(platform, item, active);
+      const next = active ? embedSrc(platform, item) : "";
       if (iframe.getAttribute("src") !== next) iframe.src = next;
     });
   });
@@ -215,16 +201,17 @@ function showToast(msg) {
   toast.hidden = false;
   toast.textContent = msg;
   clearTimeout(showToast.t);
-  showToast.t = setTimeout(() => { toast.hidden = true; }, 1600);
+  showToast.t = setTimeout(() => { toast.hidden = true; }, 1500);
 }
 
 function enter() {
   splash.hidden = true;
   hud.hidden = false;
   feedEl.hidden = false;
+  lock.hidden = false;
   buildHits(true);
   render();
-  showToast(cols === 1 ? "SWIPE · TT THEN YT THEN IG" : "FEEDS ARMED");
+  showToast("LINKS BLOCKED · SWIPE HERE");
 }
 
 function addClip(raw) {
@@ -243,12 +230,47 @@ function addClip(raw) {
   return true;
 }
 
+let startY = 0;
+let startX = 0;
+let tracking = false;
+
+function onStart(y, x) {
+  startY = y;
+  startX = x;
+  tracking = true;
+}
+function onEnd(y, x) {
+  if (!tracking) return;
+  tracking = false;
+  const dy = y - startY;
+  const dx = x - startX;
+  if (Math.abs(dy) < 36 || Math.abs(dy) < Math.abs(dx)) return;
+  if (dy < 0) goTo(index + 1);
+  else goTo(index - 1);
+}
+
+lock.addEventListener("touchstart", (e) => {
+  const t = e.changedTouches[0];
+  onStart(t.clientY, t.clientX);
+}, { passive: true });
+lock.addEventListener("touchend", (e) => {
+  const t = e.changedTouches[0];
+  onEnd(t.clientY, t.clientX);
+}, { passive: true });
+lock.addEventListener("mousedown", (e) => onStart(e.clientY, e.clientX));
+window.addEventListener("mouseup", (e) => onEnd(e.clientY, e.clientX));
+lock.addEventListener("wheel", (e) => {
+  e.preventDefault();
+  if (e.deltaY > 12) goTo(index + 1);
+  else if (e.deltaY < -12) goTo(index - 1);
+}, { passive: false });
+lock.addEventListener("click", (e) => e.preventDefault());
+
 document.getElementById("enter").addEventListener("click", enter);
 document.getElementById("mute-btn").addEventListener("click", () => setMuted(!muted));
 document.getElementById("shuffle-btn").addEventListener("click", () => {
   buildHits(true);
   render();
-  feedEl.scrollTo({ top: 0 });
   showToast("RESHUFFLED");
 });
 document.getElementById("add-btn").addEventListener("click", () => {
@@ -266,18 +288,6 @@ document.getElementById("add-form").addEventListener("submit", (e) => {
   const input = document.getElementById("url-input");
   if (addClip(input.value)) input.value = "";
 });
-
-feedEl.addEventListener("scroll", () => {
-  if (visibleIndex() !== lastHit) syncIframes();
-}, { passive: true });
-
-feedEl.addEventListener("click", (e) => {
-  const open = e.target.closest("[data-open]");
-  if (!open) return;
-  e.preventDefault();
-  window.open(open.getAttribute("data-open"), "_blank", "noopener");
-});
-
 window.addEventListener("keydown", (e) => {
   if (!splash.hidden) {
     if (e.code === "Enter" || e.code === "Space") { e.preventDefault(); enter(); }
@@ -285,6 +295,6 @@ window.addEventListener("keydown", (e) => {
   }
   if (e.code === "Space") { e.preventDefault(); setMuted(!muted); }
   if (e.key === "1" || e.key === "2" || e.key === "3") setCols(e.key);
-  if (e.key === "ArrowDown" || e.key === "j") feedEl.scrollBy({ top: feedEl.clientHeight, behavior: "smooth" });
-  if (e.key === "ArrowUp" || e.key === "k") feedEl.scrollBy({ top: -feedEl.clientHeight, behavior: "smooth" });
+  if (e.key === "ArrowDown" || e.key === "j") goTo(index + 1);
+  if (e.key === "ArrowUp" || e.key === "k") goTo(index - 1);
 });

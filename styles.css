@@ -13,28 +13,16 @@
 }
 
 * { box-sizing: border-box; margin: 0; padding: 0; }
-html, body { height: 100%; background: var(--bg); color: var(--ink); }
-body {
-  font-family: "JetBrains Mono", ui-monospace, monospace;
+html, body {
+  height: 100%;
+  background: var(--bg);
+  color: var(--ink);
   overflow: hidden;
   overscroll-behavior: none;
+  touch-action: none;
 }
+body { font-family: "JetBrains Mono", ui-monospace, monospace; }
 [hidden] { display: none !important; }
-
-.grain, .scan {
-  pointer-events: none;
-  position: fixed;
-  inset: 0;
-  z-index: 8;
-}
-.grain {
-  opacity: .06;
-  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='180' height='180'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='.8' numOctaves='4' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='180' height='180' filter='url(%23n)' opacity='.55'/%3E%3C/svg%3E");
-}
-.scan {
-  opacity: .04;
-  background: repeating-linear-gradient(to bottom, transparent 0 2px, rgba(0,0,0,.5) 2px 3px);
-}
 
 .splash {
   position: fixed;
@@ -66,14 +54,13 @@ body {
   font: 700 .82rem/1 "JetBrains Mono", monospace;
   letter-spacing: .16em;
   padding: .95rem 1.3rem;
-  cursor: pointer;
   box-shadow: 4px 4px 0 var(--cyan);
 }
 
 .hud {
   position: fixed;
   top: 0; left: 0; right: 0;
-  z-index: 30;
+  z-index: 40;
   height: calc(var(--hud) + env(safe-area-inset-top));
   display: flex;
   align-items: flex-end;
@@ -81,15 +68,13 @@ body {
   gap: .35rem;
   padding: 0 .45rem .4rem;
   background: #050505;
-  font-size: .6rem;
 }
-.brand { display: flex; align-items: center; }
 .pulse {
   width: .48rem; height: .48rem; border-radius: 99px;
   background: var(--magenta);
   box-shadow: 0 0 8px var(--magenta);
 }
-.stats { color: var(--dim); }
+.stats { color: var(--dim); font-size: .6rem; }
 .stats b { color: var(--acid); }
 .cols, .actions { display: flex; gap: .22rem; }
 .cols button, .actions button, .drawer-head button {
@@ -98,79 +83,71 @@ body {
   color: var(--ink);
   font: 700 .62rem/1 "JetBrains Mono", monospace;
   padding: .36rem .45rem;
-  cursor: pointer;
 }
 .cols button.on, .actions button.on { border-color: var(--acid); color: var(--acid); }
 
 .feed {
   height: 100dvh;
-  overflow-y: auto;
-  scroll-snap-type: y mandatory;
-  overscroll-behavior: contain;
-  touch-action: pan-y;
-  -webkit-overflow-scrolling: touch;
+  overflow: hidden;
+  touch-action: none;
+  pointer-events: none;
 }
 .hit {
   height: 100dvh;
-  scroll-snap-align: start;
-  scroll-snap-stop: always;
   display: grid;
   grid-template-columns: repeat(var(--cols), minmax(0, 1fr));
-  grid-template-rows: 1fr;
   padding-top: calc(var(--hud) + env(safe-area-inset-top));
-  touch-action: pan-y;
 }
 .pane {
   position: relative;
   overflow: hidden;
   background: #000;
   border-right: 1px solid var(--line);
-  touch-action: pan-y;
 }
-.pane.off { display: none; }
 .pane:last-child { border-right: 0; }
-.stage {
+.stage, .blocker {
   position: absolute;
   inset: 0;
-  overflow: hidden;
-  background: #000;
-  pointer-events: none;
 }
+.stage { z-index: 1; overflow: hidden; }
 .stage iframe {
-  position: absolute;
-  inset: 0;
   width: 100%;
   height: 100%;
   border: 0;
-  background: #000;
   pointer-events: none !important;
-  max-width: 100%;
-  max-height: 100%;
 }
-.shield {
+.blocker {
+  z-index: 2;
+  width: 100%;
+  height: 100%;
+  border: 0;
+  background: transparent;
+}
+.badge {
   position: absolute;
-  inset: 0;
   z-index: 3;
-  touch-action: pan-y;
-}
-.badge, .open-btn {
-  position: absolute;
-  z-index: 5;
+  top: .4rem;
+  left: .35rem;
   font: 700 .55rem/1 "JetBrains Mono", monospace;
   letter-spacing: .08em;
   padding: .24rem .34rem;
   background: rgba(0,0,0,.75);
   color: #fff;
-  border: 0;
+  pointer-events: none;
 }
-.badge { top: .4rem; left: .35rem; }
 .pane.tt .badge { color: var(--cyan); }
 .pane.yt .badge { color: var(--yt); }
 .pane.ig .badge { color: var(--ig); }
-.open-btn {
-  bottom: calc(.45rem + env(safe-area-inset-bottom));
-  right: .35rem;
-  cursor: pointer;
+
+.lock {
+  position: fixed;
+  top: calc(var(--hud) + env(safe-area-inset-top));
+  left: 0;
+  right: 0;
+  bottom: 0;
+  z-index: 20;
+  background: transparent;
+  touch-action: none;
 }
 
 .drawer {
@@ -206,7 +183,6 @@ body {
   color: #111;
   font: 700 .72rem/1 "JetBrains Mono", monospace;
   padding: 0 .9rem;
-  cursor: pointer;
 }
 .status { color: var(--cyan) !important; }
 .toast {

@@ -2,29 +2,26 @@
 <html lang="en">
 <head>
   <meta charset="UTF-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover, maximum-scale=1" />
   <meta name="theme-color" content="#050505" />
   <title>DOPAMINE MAXING</title>
   <link rel="preconnect" href="https://fonts.googleapis.com" />
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
   <link href="https://fonts.googleapis.com/css2?family=Anton&family=JetBrains+Mono:wght@400;600;700&display=swap" rel="stylesheet" />
-  <link rel="stylesheet" href="./styles.css?v=6" />
+  <link rel="stylesheet" href="./styles.css?v=7" />
 </head>
 <body>
-  <div class="grain" aria-hidden="true"></div>
-  <div class="scan" aria-hidden="true"></div>
-
   <section id="splash" class="splash">
     <p class="kicker">WARNING // OVERSTIMULATION PROTOCOL</p>
     <h1 class="wordmark">DOPAMINE<br />MAXING</h1>
-    <p class="tag">tiktok, youtube shorts, instagram<br />swipe stays in the app</p>
+    <p class="tag">tiktok + youtube shorts + instagram<br />links are blocked. swipe stays here.</p>
     <button id="enter" type="button">TAP TO OVERSTIMULATE</button>
   </section>
 
   <header class="hud" hidden>
     <div class="brand"><span class="pulse"></span></div>
     <div class="stats">HIT <b id="hit-num">01</b></div>
-    <div class="cols" id="col-picker" role="group" aria-label="How many feeds">
+    <div class="cols" id="col-picker">
       <button type="button" data-cols="1">1</button>
       <button type="button" data-cols="2">2</button>
       <button type="button" data-cols="3">3</button>
@@ -37,6 +34,7 @@
   </header>
 
   <main id="feed" class="feed" hidden></main>
+  <div id="lock" class="lock" hidden></div>
 
   <aside id="drawer" class="drawer" hidden>
     <div class="drawer-card">
@@ -53,6 +51,6 @@
   </aside>
 
   <p id="toast" class="toast" hidden></p>
-  <script src="./app.js?v=6"></script>
+  <script src="./app.js?v=7"></script>
 </body>
 </html>
