@@ -26,11 +26,11 @@ const SEED = {
   ]
 };
 
+const ORDER = ["tiktok", "youtube", "instagram"];
 const feedEl = document.getElementById("feed");
 const splash = document.getElementById("splash");
 const hud = document.querySelector(".hud");
 const hitNum = document.getElementById("hit-num");
-const swipeNum = document.getElementById("swipe-num");
 const muteBtn = document.getElementById("mute-btn");
 const drawer = document.getElementById("drawer");
 const about = document.getElementById("about");
@@ -38,11 +38,17 @@ const toast = document.getElementById("toast");
 const addStatus = document.getElementById("add-status");
 
 const customKey = "dm-custom-v1";
+const colsKey = "dm-cols-v1";
 let muted = true;
 let focused = null;
 let hits = [];
 let lastHit = 0;
-let swipeCount = 0;
+let cols = clampCols(localStorage.getItem(colsKey) || 3);
+
+function clampCols(n) {
+  n = Number(n);
+  return n === 1 || n === 2 || n === 3 ? n : 3;
+}
 
 function loadCustom() {
   try { return JSON.parse(localStorage.getItem(customKey) || "[]"); }
@@ -113,24 +119,42 @@ function paneHTML(platform, item, idx) {
       <div class="stage">
         <iframe
           title="${names[platform]} ${item.label || item.id}"
-          allow="autoplay; clipboard-write; encrypted-media; fullscreen; picture-in-picture"
-          allowfullscreen
+          allow="autoplay; encrypted-media; fullscreen; picture-in-picture"
           referrerpolicy="strict-origin-when-cross-origin"
         ></iframe>
       </div>
+      <div class="shield" aria-hidden="true"></div>
     </article>`;
 }
 
+function applyCols() {
+  document.documentElement.style.setProperty("--cols", String(cols));
+  document.querySelectorAll("#col-picker button").forEach((btn) => {
+    btn.classList.toggle("on", Number(btn.dataset.cols) === cols);
+  });
+  document.querySelectorAll(".hit").forEach((section) => {
+    ORDER.forEach((platform, i) => {
+      const pane = section.querySelector(`[data-platform="${platform}"]`);
+      if (pane) pane.classList.toggle("off", i >= cols);
+    });
+  });
+  scaleInstagram();
+}
+
+function setCols(next) {
+  cols = clampCols(next);
+  localStorage.setItem(colsKey, String(cols));
+  applyCols();
+  showToast(cols === 1 ? "1 FEED" : `${cols} FEEDS`);
+}
+
 function scaleInstagram() {
-  document.querySelectorAll(".pane.ig").forEach((pane) => {
+  document.querySelectorAll(".pane.ig:not(.off)").forEach((pane) => {
     const iframe = pane.querySelector("iframe");
     if (!iframe) return;
     const w = pane.clientWidth || 1;
     const h = pane.clientHeight || 1;
-    const sx = w / 328;
-    const sy = h / 720;
-    const s = Math.max(sx, sy);
-    iframe.style.transform = `scale(${s})`;
+    iframe.style.transform = `scale(${Math.max(w / 328, h / 720)})`;
   });
 }
 
@@ -141,8 +165,8 @@ function render() {
       ${paneHTML("youtube", hit.youtube, i)}
       ${paneHTML("instagram", hit.instagram, i)}
     </section>`).join("");
+  applyCols();
   syncIframes();
-  requestAnimationFrame(scaleInstagram);
 }
 
 function visibleIndex() {
@@ -160,7 +184,8 @@ function syncIframes() {
     section.querySelectorAll(".pane").forEach((pane) => {
       const platform = pane.dataset.platform;
       const iframe = pane.querySelector("iframe");
-      const next = embedSrc(platform, hit[platform], active);
+      const show = active && !pane.classList.contains("off");
+      const next = embedSrc(platform, hit[platform], show);
       if (iframe.getAttribute("src") !== next) iframe.src = next;
     });
   });
@@ -175,16 +200,11 @@ function setMuted(next) {
     if (!frame.src) return;
     if (frame.src.includes("youtube.com")) {
       frame.contentWindow?.postMessage(JSON.stringify({
-        event: "command",
-        func: muted ? "mute" : "unMute",
-        args: []
+        event: "command", func: muted ? "mute" : "unMute", args: []
       }), "*");
     }
     if (frame.src.includes("tiktok.com")) {
-      frame.contentWindow?.postMessage({
-        type: muted ? "mute" : "unMute",
-        "x-tiktok-player": true
-      }, "*");
+      frame.contentWindow?.postMessage({ type: muted ? "mute" : "unMute", "x-tiktok-player": true }, "*");
     }
   });
   syncIframes();
@@ -194,17 +214,16 @@ function showToast(msg) {
   toast.hidden = false;
   toast.textContent = msg;
   clearTimeout(showToast.t);
-  showToast.t = setTimeout(() => { toast.hidden = true; }, 1800);
+  showToast.t = setTimeout(() => { toast.hidden = true; }, 1600);
 }
 
 function enter() {
   splash.hidden = true;
-  splash.classList.add("gone");
   hud.hidden = false;
   feedEl.hidden = false;
   buildHits(true);
   render();
-  showToast("THREE FEEDS ARMED");
+  showToast("FEEDS ARMED");
 }
 
 function toggleFocus(pane) {
@@ -244,8 +263,6 @@ document.getElementById("shuffle-btn").addEventListener("click", () => {
   buildHits(true);
   render();
   feedEl.scrollTo({ top: 0, behavior: "smooth" });
-  swipeCount = 0;
-  swipeNum.textContent = "0";
   showToast("RESHUFFLED");
 });
 document.getElementById("add-btn").addEventListener("click", () => { drawer.hidden = false; document.getElementById("url-input").focus(); });
@@ -254,6 +271,11 @@ document.getElementById("info-btn").addEventListener("click", () => { about.hidd
 document.getElementById("close-about").addEventListener("click", () => { about.hidden = true; });
 drawer.addEventListener("click", (e) => { if (e.target === drawer) drawer.hidden = true; });
 about.addEventListener("click", (e) => { if (e.target === about) about.hidden = true; });
+
+document.getElementById("col-picker").addEventListener("click", (e) => {
+  const btn = e.target.closest("[data-cols]");
+  if (btn) setCols(btn.dataset.cols);
+});
 
 document.getElementById("add-form").addEventListener("submit", (e) => {
   e.preventDefault();
@@ -264,8 +286,6 @@ document.getElementById("add-form").addEventListener("submit", (e) => {
 feedEl.addEventListener("scroll", () => {
   const idx = visibleIndex();
   if (idx !== lastHit) {
-    swipeCount += 1;
-    swipeNum.textContent = String(swipeCount);
     if (focused) {
       focused.classList.remove("focused");
       const btn = focused.querySelector("[data-focus]");
@@ -289,6 +309,7 @@ window.addEventListener("keydown", (e) => {
     return;
   }
   if (e.code === "Space") { e.preventDefault(); setMuted(!muted); }
+  if (e.key === "1" || e.key === "2" || e.key === "3") setCols(e.key);
   if (e.key === "ArrowDown" || e.key === "j") feedEl.scrollBy({ top: feedEl.clientHeight, behavior: "smooth" });
   if (e.key === "ArrowUp" || e.key === "k") feedEl.scrollBy({ top: -feedEl.clientHeight, behavior: "smooth" });
   if (e.key === "Escape") {
