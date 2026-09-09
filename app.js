@@ -28,6 +28,7 @@ const SEED = {
 
 const NAMES = { tiktok: "TIKTOK", youtube: "SHORTS", instagram: "INSTAGRAM" };
 const CLS = { tiktok: "tt", youtube: "yt", instagram: "ig" };
+const YT = "https://www.youtube-nocookie.com";
 
 const splash = document.getElementById("splash");
 const hud = document.querySelector(".hud");
@@ -43,11 +44,11 @@ const addStatus = document.getElementById("add-status");
 const customKey = "dm-custom-v1";
 const colsKey = "dm-cols-v3";
 const thumbKey = "dm-tt-thumbs-v1";
-const YT = "https://www.youtube-nocookie.com";
 
 let muted = true;
-let auto = false;
-let cols = initialCols();
+let auto = true;
+let savedCols = initialSavedCols();
+let cols = effectiveCols();
 let hits = [];
 let index = 0;
 let slideH = 0;
@@ -59,8 +60,7 @@ let lastY = 0;
 let lastT = 0;
 let dy = 0;
 let vy = 0;
-let playing = null;
-let paused = false;
+const players = new Set();
 
 window.open = () => null;
 
@@ -68,10 +68,16 @@ function clampCols(n) {
   n = Number(n);
   return n === 1 || n === 2 || n === 3 ? n : 1;
 }
-function initialCols() {
+function isLandscape() {
+  return window.matchMedia("(orientation: landscape)").matches;
+}
+function initialSavedCols() {
   const saved = localStorage.getItem(colsKey);
   if (saved) return clampCols(saved);
   return window.innerWidth < 800 ? 1 : 3;
+}
+function effectiveCols() {
+  return isLandscape() ? 3 : savedCols;
 }
 function loadCustom() {
   try { return JSON.parse(localStorage.getItem(customKey) || "[]"); }
@@ -151,35 +157,31 @@ function posterSrc(platform, item) {
   return "";
 }
 function posterFallback(platform, item) {
-  if (platform === "youtube") return ytPosters(item.id).slice(1).join("|");
-  return "";
+  return platform === "youtube" ? ytPosters(item.id).slice(1).join("|") : "";
 }
 function titleFor(platform, item) {
   if (item.title) return item.title;
-  if (platform === "instagram") return "REEL CARD";
+  if (platform === "instagram") return "REEL";
   if (platform === "youtube") return "SHORT";
   return "TIKTOK";
 }
 function subFor(platform, item) {
   if (item.author) return item.author;
-  if (platform === "instagram") return "no playback on the open web";
   return item.id;
 }
 
 function paneHTML(card) {
   const { platform, item } = card;
-  const src = posterSrc(platform, item);
-  const fb = posterFallback(platform, item);
   return `
     <article class="pane ${CLS[platform]}" data-platform="${platform}" data-id="${item.id}">
       <span class="badge">${NAMES[platform]}</span>
       <div class="poster">
-        <img alt="" src="${src}" data-fallback="${fb}" referrerpolicy="no-referrer" />
+        <img alt="" src="${posterSrc(platform, item)}" data-fallback="${posterFallback(platform, item)}" referrerpolicy="no-referrer" />
         <div class="meta">
           <h2 data-title>${titleFor(platform, item)}</h2>
           <p data-sub>${subFor(platform, item)}</p>
         </div>
-        ${platform === "instagram" ? "" : `<button class="play" type="button" data-play>PLAY</button>`}
+        <button class="play" type="button" data-play>PLAY</button>
       </div>
       <div class="stage"></div>
       <div class="rail">
@@ -192,18 +194,20 @@ function paneHTML(card) {
 
 function applyColsUi() {
   document.documentElement.style.setProperty("--cols", String(cols));
+  document.body.classList.toggle("land", isLandscape());
   document.querySelectorAll("#col-picker button").forEach((btn) => {
-    btn.classList.toggle("on", Number(btn.dataset.cols) === cols);
+    btn.classList.toggle("on", Number(btn.dataset.cols) === (isLandscape() ? 3 : savedCols));
   });
 }
 
 function render() {
   applyColsUi();
-  stopPlayer();
+  stopAll();
   track.innerHTML = hits.map((row) => `<section class="slide">${row.map(paneHTML).join("")}</section>`).join("");
   measure();
-  goTo(0, true);
+  goTo(Math.min(index, hits.length - 1), true);
   hydrate();
+  if (auto) mountRow();
 }
 
 function measure() {
@@ -224,34 +228,39 @@ function goTo(next, instant) {
   dy = 0;
   hitNum.textContent = String(index + 1).padStart(2, "0");
   paint(instant);
-  if (prev !== index) stopPlayer();
-  if (auto) maybeAuto();
+  if (prev !== index) {
+    stopAll();
+    if (auto) mountRow();
+  }
 }
 
 function embedSrc(platform, id) {
   if (platform === "youtube") {
     return `${YT}/embed/${id}?autoplay=1&mute=${muted ? 1 : 0}&playsinline=1&rel=0&modestbranding=1&enablejsapi=1&loop=1&playlist=${id}&origin=${encodeURIComponent(location.origin)}`;
   }
-  return `https://www.tiktok.com/player/v1/${id}?autoplay=1&muted=${muted ? 1 : 0}&loop=1&progress_bar=0&controls=0`;
+  if (platform === "tiktok") {
+    return `https://www.tiktok.com/player/v1/${id}?autoplay=1&muted=${muted ? 1 : 0}&loop=1&progress_bar=0&controls=0`;
+  }
+  return `https://www.instagram.com/reel/${id}/embed/`;
 }
 
-function stopPlayer() {
-  if (!playing) return;
-  playing.classList.remove("playing");
-  const stage = playing.querySelector(".stage");
+function unmount(pane) {
+  pane.classList.remove("playing");
+  const stage = pane.querySelector(".stage");
   if (stage) stage.innerHTML = "";
-  playing = null;
-  paused = false;
+  players.delete(pane);
+}
+function stopAll() {
+  [...players].forEach(unmount);
 }
 function mountPlayer(pane) {
+  if (!pane || players.has(pane)) return;
   const platform = pane.dataset.platform;
   const id = pane.dataset.id;
-  if (platform === "instagram") return;
-  if (playing && playing !== pane) stopPlayer();
-  playing = pane;
-  paused = false;
+  if (cols === 1) stopAll();
   pane.classList.add("playing");
-  pane.querySelector("[data-pause]").textContent = "PAUSE";
+  const pauseBtn = pane.querySelector("[data-pause]");
+  if (pauseBtn) pauseBtn.textContent = "PAUSE";
   pane.querySelector(".stage").innerHTML = `
     <iframe
       title="${NAMES[platform]}"
@@ -259,43 +268,39 @@ function mountPlayer(pane) {
       sandbox="allow-scripts allow-same-origin allow-presentation"
       allow="autoplay; encrypted-media; picture-in-picture"
     ></iframe>`;
+  players.add(pane);
 }
-function ytCommand(func) {
-  const frame = playing && playing.querySelector("iframe");
+function mountRow() {
+  const slide = track.children[index];
+  if (!slide) return;
+  slide.querySelectorAll(".pane").forEach(mountPlayer);
+}
+function ytCommand(pane, func) {
+  const frame = pane.querySelector("iframe");
   if (!frame || !frame.src.includes("youtube")) return false;
   frame.contentWindow?.postMessage(JSON.stringify({ event: "command", func, args: [] }), YT);
   return true;
 }
-function togglePause() {
-  if (!playing) return;
-  paused = !paused;
-  playing.querySelector("[data-pause]").textContent = paused ? "PLAY" : "PAUSE";
-  if (ytCommand(paused ? "pauseVideo" : "playVideo")) return;
-  const platform = playing.dataset.platform;
-  const id = playing.dataset.id;
-  const frame = playing.querySelector("iframe");
+function togglePause(pane) {
+  if (!pane || !players.has(pane)) return;
+  const btn = pane.querySelector("[data-pause]");
+  const paused = btn.textContent === "PAUSE";
+  btn.textContent = paused ? "PLAY" : "PAUSE";
+  if (ytCommand(pane, paused ? "pauseVideo" : "playVideo")) return;
+  const frame = pane.querySelector("iframe");
   if (!frame) return;
   if (paused) frame.src = "";
-  else frame.src = embedSrc(platform, id);
+  else frame.src = embedSrc(pane.dataset.platform, pane.dataset.id);
 }
 function setMuted(next) {
   muted = next;
   muteBtn.classList.toggle("on", muted);
   muteBtn.textContent = muted ? "MUTE" : "SOUND";
-  if (!playing) return;
-  if (ytCommand(muted ? "mute" : "unMute")) return;
-  const platform = playing.dataset.platform;
-  const id = playing.dataset.id;
-  const frame = playing.querySelector("iframe");
-  if (frame) frame.src = embedSrc(platform, id);
-}
-function maybeAuto() {
-  if (!auto) return;
-  const row = hits[index] || [];
-  const yt = row.find((c) => c.platform === "youtube");
-  if (!yt) return;
-  const pane = feed.querySelector(`.slide:nth-child(${index + 1}) .pane.yt`);
-  if (pane) mountPlayer(pane);
+  players.forEach((pane) => {
+    if (ytCommand(pane, muted ? "mute" : "unMute")) return;
+    const frame = pane.querySelector("iframe");
+    if (frame) frame.src = embedSrc(pane.dataset.platform, pane.dataset.id);
+  });
 }
 
 async function hydrate() {
@@ -349,7 +354,6 @@ async function hydrate() {
     const img = pane.querySelector("img");
     if (title) title.textContent = titleFor(platform, card.item);
     if (sub) sub.textContent = subFor(platform, card.item);
-    if (img && card.item.thumb && !img.src) img.src = card.item.thumb;
     if (img && card.item.thumb && platform === "tiktok") img.src = card.item.thumb;
   });
 }
@@ -362,20 +366,37 @@ function showToast(msg) {
 }
 function setCols(next) {
   const n = clampCols(next);
-  if (n === cols) return;
-  cols = n;
-  localStorage.setItem(colsKey, String(cols));
+  savedCols = n;
+  localStorage.setItem(colsKey, String(n));
+  const want = effectiveCols();
+  if (want === cols && !isLandscape()) {
+    applyColsUi();
+    return;
+  }
+  cols = want;
   buildHits(false);
   render();
-  showToast(cols === 1 ? "FULL SCREEN" : `${cols} SIDE BY SIDE`);
+  showToast(isLandscape() ? "LANDSCAPE · ALL 3" : (cols === 1 ? "FULL SCREEN" : `${cols} SIDE BY SIDE`));
+}
+function syncOrientation() {
+  const want = effectiveCols();
+  if (want === cols) {
+    measure();
+    return;
+  }
+  cols = want;
+  buildHits(false);
+  render();
+  showToast(isLandscape() ? "SIDEWAYS · ALL 3 FEEDS" : "PORTRAIT");
 }
 function enter() {
   splash.hidden = true;
   hud.hidden = false;
   feed.hidden = false;
+  cols = effectiveCols();
   buildHits(true);
   render();
-  showToast("SWIPE THE CARDS · TAP PLAY");
+  showToast(isLandscape() ? "ALL 3 FEEDS" : "SWIPE · TAP PLAY");
 }
 function addClip(raw) {
   const parsed = parseUrl(raw);
@@ -400,7 +421,6 @@ function eventPoint(e) {
 }
 function onDown(e) {
   if (e.target.closest("button, input, a, .drawer-card")) return;
-  if (playing && !e.target.closest(".rail, .poster, .feed")) return;
   const p = eventPoint(e);
   dragging = true;
   axis = null;
@@ -464,8 +484,8 @@ feed.addEventListener("click", (e) => {
   const pane = e.target.closest(".pane");
   if (!pane) return;
   if (e.target.closest("[data-play]")) mountPlayer(pane);
-  if (e.target.closest("[data-pause]")) togglePause();
-  if (e.target.closest("[data-stop]")) stopPlayer();
+  if (e.target.closest("[data-pause]")) togglePause(pane);
+  if (e.target.closest("[data-stop]")) unmount(pane);
   if (e.target.closest("[data-next]")) goTo(index + 1);
 });
 
@@ -485,9 +505,9 @@ document.getElementById("mute-btn").addEventListener("click", () => setMuted(!mu
 document.getElementById("auto-btn").addEventListener("click", () => {
   auto = !auto;
   autoBtn.classList.toggle("on", auto);
-  showToast(auto ? "AUTO ON · SHORTS ONLY" : "AUTO OFF");
-  if (auto) maybeAuto();
-  else stopPlayer();
+  showToast(auto ? "AUTO ON" : "AUTO OFF");
+  if (auto) mountRow();
+  else stopAll();
 });
 document.getElementById("shuffle-btn").addEventListener("click", () => {
   buildHits(true);
@@ -509,16 +529,19 @@ document.getElementById("add-form").addEventListener("submit", (e) => {
   const input = document.getElementById("url-input");
   if (addClip(input.value)) input.value = "";
 });
-window.addEventListener("resize", measure);
-window.addEventListener("orientationchange", () => setTimeout(measure, 250));
-document.addEventListener("visibilitychange", () => { if (document.hidden) stopPlayer(); });
+window.addEventListener("resize", () => {
+  syncOrientation();
+  measure();
+});
+window.addEventListener("orientationchange", () => setTimeout(syncOrientation, 250));
+document.addEventListener("visibilitychange", () => { if (document.hidden) stopAll(); });
 window.addEventListener("keydown", (e) => {
   if (!splash.hidden) {
     if (e.code === "Enter" || e.code === "Space") { e.preventDefault(); enter(); }
     return;
   }
   if (e.code === "Space") { e.preventDefault(); setMuted(!muted); }
-  if (e.key === "Escape") { stopPlayer(); drawer.hidden = true; }
+  if (e.key === "Escape") { stopAll(); drawer.hidden = true; }
   if (e.key === "1" || e.key === "2" || e.key === "3") setCols(e.key);
   if (e.key === "ArrowDown" || e.key === "j") goTo(index + 1);
   if (e.key === "ArrowUp" || e.key === "k") goTo(index - 1);
