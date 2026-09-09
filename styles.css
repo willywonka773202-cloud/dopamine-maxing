@@ -18,6 +18,8 @@ body {
   text-rendering: optimizeLegibility;
 }
 
+[hidden] { display: none !important; }
+
 .grain, .scan {
   pointer-events: none;
   position: fixed;
